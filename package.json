@@ -1,0 +1,23 @@
+{
+  "name": "accessguardai",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "playwright": "^1.60.0"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
+  }
+}
