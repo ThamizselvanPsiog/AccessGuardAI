@@ -2,32 +2,57 @@ const lighthouse = require("lighthouse").default;
 const { launch } = require("chrome-launcher");
 
 async function runLighthouse(url) {
+    let chrome;
 
-    const chrome = await launch({
-        chromeFlags: ["--headless"]
-    });
+    try {
+        chrome = await launch({
+            chromeFlags: [
+                "--headless",
+                "--disable-gpu",
+                "--no-sandbox"
+            ]
+        });
 
-    const result = await lighthouse(url, {
-        port: chrome.port,
-        output: "json",
-        logLevel: "error"
-    });
+        const result = await lighthouse(url, {
+            port: chrome.port,
+            output: "json",
+            logLevel: "error"
+        });
 
-    await chrome.kill();
+        return {
+            accessibility:
+                result.lhr.categories.accessibility.score * 100,
 
-    return {
-        accessibility:
-            result.lhr.categories.accessibility.score * 100,
+            performance:
+                result.lhr.categories.performance.score * 100,
 
-        performance:
-            result.lhr.categories.performance.score * 100,
+            bestPractices:
+                result.lhr.categories["best-practices"].score * 100,
 
-        bestPractices:
-            result.lhr.categories["best-practices"].score * 100,
+            seo:
+                result.lhr.categories.seo.score * 100
+        };
 
-        seo:
-            result.lhr.categories.seo.score * 100
-    };
+    } catch (error) {
+        console.error("Lighthouse Error:", error);
+        throw error;
+    } finally {
+        if (chrome) {
+            try {
+                // Give Windows time to release temp files
+                await new Promise(resolve =>
+                    setTimeout(resolve, 1000)
+                );
+
+                await chrome.kill();
+            } catch (cleanupError) {
+                console.error(
+                    "Chrome cleanup error:",
+                    cleanupError.message
+                );
+            }
+        }
+    }
 }
 
 module.exports = runLighthouse;

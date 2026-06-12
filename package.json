@@ -12,9 +12,14 @@
   "type": "commonjs",
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",
+    "better-sqlite3": "^12.10.0",
+    "chrome-launcher": "^1.2.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "playwright": "^1.60.0"
+    "lighthouse": "^13.3.0",
+    "pa11y": "^9.1.1",
+    "playwright": "^1.60.0",
+    "sqlite3": "^6.0.1"
   },
   "devDependencies": {
     "jest": "^30.4.2",

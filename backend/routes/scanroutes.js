@@ -2,6 +2,15 @@ const express = require("express");
 const router = express.Router();
 
 const scanwebsite = require("../scanners/playwrightscanner");
+const runlighthouse= require("../scanners/lighthousescanner");
+const runpa11y = require("../scanners/pa11yscanner");
+const {
+    normalizeAxeViolations,
+    normalizePa11yIssues
+} = require("../services/normalizer");
+const {
+    deduplicateviolations
+} = require("../services/deduplicator");
 
 router.post("/scan", async (req, res) => {
 
@@ -15,11 +24,58 @@ router.post("/scan", async (req, res) => {
             });
         }
         
-        const result = await scanwebsite(url);
+        const axeresult = await scanwebsite(url);
+        const lighthouseresults =
+            await runlighthouse(url);
+        const pa11yresults= await runpa11y(url);
 
-        res.json(result);
+        const normalizedViolations = [
+    ...normalizeAxeViolations(axeresult?.violations || []),
+    ...normalizePa11yIssues(pa11yresults?.issues || [])
+       ];
+
+       const axeCount = normalizedViolations.filter(
+            v => v.source === "axe"
+        ).length;
+
+       const pa11yCount = normalizedViolations.filter(
+            v => v.source === "pa11y"
+        ).length;
+
+       const deduplicatedviolations = deduplicateviolations(normalizedViolations);
+
+            res.json({
+        url,
+    
+        scores: {
+            accessibility: lighthouseresults.accessibility,
+            performance: lighthouseresults.performance,
+            bestPractices: lighthouseresults.bestPractices,
+            seo: lighthouseresults.seo
+        },
+    
+        violations: deduplicatedviolations,
+
+        raw: {
+        axe: axeresult,
+        pa11y: pa11yresults,
+        lighthouse: lighthouseresults
+       },
+    
+        summary: {
+            totalViolations: deduplicatedviolations.length,
+            rawViolations: normalizedViolations.length,
+            duplicatesRemoved:
+                    normalizedViolations.length -
+                    deduplicatedviolations.length,
+            axeViolations: axeCount,
+            pa11yViolations: pa11yCount
+        }
+    });
 
     } catch (error) {
+
+        console.error(error);
 
         res.status(500).json({
             error: error.message
