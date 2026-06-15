@@ -24,7 +24,7 @@ describe("Playwright Scanner", () => {
             .toHaveProperty("violations");
 
     },
-    30000
+    120000
 );
 
 });

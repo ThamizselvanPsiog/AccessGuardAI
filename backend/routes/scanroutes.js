@@ -12,6 +12,11 @@ const {
     deduplicateviolations
 } = require("../services/deduplicator");
 
+const {
+    saveScan,
+    saveViolations
+} = require("../services/databaseService");
+
 router.post("/scan", async (req, res) => {
 
     try {
@@ -24,9 +29,12 @@ router.post("/scan", async (req, res) => {
             });
         }
         
+        console.log("Starting Axe");
         const axeresult = await scanwebsite(url);
+        console.log("Starting Lighthouse");
         const lighthouseresults =
             await runlighthouse(url);
+        console.log("Starting Pa11y");
         const pa11yresults= await runpa11y(url);
 
         const normalizedViolations = [
@@ -44,7 +52,18 @@ router.post("/scan", async (req, res) => {
 
        const deduplicatedviolations = deduplicateviolations(normalizedViolations);
 
-            res.json({
+       const scanId = saveScan(url, {
+            accessibility: lighthouseresults.accessibility,
+            performance: lighthouseresults.performance,
+            bestPractices: lighthouseresults.bestPractices,
+            seo: lighthouseresults.seo
+        });
+
+        saveViolations(scanId, deduplicatedviolations);
+
+        console.log("All scanners completed");
+
+        res.json({
         url,
     
         scores: {
