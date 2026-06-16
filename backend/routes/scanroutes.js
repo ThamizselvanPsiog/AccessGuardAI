@@ -13,6 +13,10 @@ const {
 } = require("../services/deduplicator");
 
 const {
+    mapWCAG
+} = require("../services/wcagmapper");
+
+const {
     saveScan,
     saveViolations
 } = require("../services/databaseService");
@@ -52,6 +56,9 @@ router.post("/scan", async (req, res) => {
 
        const deduplicatedviolations = deduplicateviolations(normalizedViolations);
 
+       const mappedViolations =
+            mapWCAG(deduplicatedviolations);
+
        const scanId = saveScan(url, {
             accessibility: lighthouseresults.accessibility,
             performance: lighthouseresults.performance,
@@ -59,7 +66,7 @@ router.post("/scan", async (req, res) => {
             seo: lighthouseresults.seo
         });
 
-        saveViolations(scanId, deduplicatedviolations);
+        saveViolations(scanId, mappedViolations);
 
         console.log("All scanners completed");
 
@@ -73,7 +80,7 @@ router.post("/scan", async (req, res) => {
             seo: lighthouseresults.seo
         },
     
-        violations: deduplicatedviolations,
+        violations: mappedViolations,
 
         raw: {
         axe: axeresult,
@@ -82,7 +89,7 @@ router.post("/scan", async (req, res) => {
        },
     
         summary: {
-            totalViolations: deduplicatedviolations.length,
+            totalViolations: mappedViolations.length,
             rawViolations: normalizedViolations.length,
             duplicatesRemoved:
                     normalizedViolations.length -

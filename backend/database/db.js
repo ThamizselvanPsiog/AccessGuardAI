@@ -15,13 +15,20 @@ CREATE TABLE IF NOT EXISTS scans (
 
 CREATE TABLE IF NOT EXISTS violations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+
     scan_id INTEGER,
+
     source TEXT,
     rule_id TEXT,
     severity TEXT,
     selector TEXT,
     description TEXT,
     detected_by TEXT,
+
+    wcag_category TEXT,
+    wcag_criterion TEXT,
+    wcag_level TEXT,
+
     FOREIGN KEY(scan_id) REFERENCES scans(id)
 );
 `);

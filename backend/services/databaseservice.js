@@ -28,15 +28,19 @@ function saveViolations(scanId, violations) {
 
     const stmt = db.prepare(`
         INSERT INTO violations (
-            scan_id,
-            source,
-            rule_id,
-            severity,
-            selector,
-            description,
-            detected_by
+                scan_id,
+                source,
+                rule_id,
+                severity,
+                selector,
+                description,
+                detected_by,
+
+                wcag_category,
+                wcag_criterion,
+                wcag_level
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     violations.forEach(v => {
@@ -47,7 +51,11 @@ function saveViolations(scanId, violations) {
             v.severity,
             v.selector,
             v.description,
-            JSON.stringify(v.detectedBy || [])
+            JSON.stringify(v.detectedBy || []),
+
+            v.wcagCategory,
+            v.wcagCriterion,
+            v.wcagLevel
         );
     });
 }
