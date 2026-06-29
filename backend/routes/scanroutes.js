@@ -21,6 +21,24 @@ const {
     saveViolations
 } = require("../services/databaseService");
 
+const {
+    processViolations
+} = require(
+    "../services/accessibilitychain"
+);
+
+const {
+    validateFixes
+} = require(
+    "../services/validationchain"
+);
+
+const {
+    processGuidance
+} = require(
+    "../services/guidancechain"
+);
+
 router.post("/scan", async (req, res) => {
 
     try {
@@ -59,6 +77,56 @@ router.post("/scan", async (req, res) => {
        const mappedViolations =
             mapWCAG(deduplicatedviolations);
 
+        let aiFixes=[];
+
+        try{
+            aiFixes =
+            await processViolations(
+            mappedViolations
+            );
+        }catch(err){
+            console.error(
+                "AI Fix Generation Failed",
+                err.message
+            );
+
+            aiFixes=[];
+        }
+
+        let validations=[];
+
+        try{
+            validations =
+                await validateFixes(
+                mappedViolations,
+                aiFixes
+            );
+        } catch(err){
+            console.error(
+                "Validation Failed:",
+                err.message
+            );
+
+            validations=[];
+        }
+
+        let guidance = [];
+
+        try {
+                guidance =
+                    await processGuidance(
+                        mappedViolations
+                    );
+                
+            } catch (err) {
+                console.error(
+                    "Guidance generation failed:",
+                    err.message
+                );
+            
+                guidance = [];
+            }
+
        const scanId = saveScan(url, {
             accessibility: lighthouseresults.accessibility,
             performance: lighthouseresults.performance,
@@ -81,6 +149,12 @@ router.post("/scan", async (req, res) => {
         },
     
         violations: mappedViolations,
+
+        aiFixes,
+
+        validations,
+
+        guidance,
 
         raw: {
         axe: axeresult,

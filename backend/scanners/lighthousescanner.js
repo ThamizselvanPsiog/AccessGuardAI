@@ -9,14 +9,21 @@ async function runLighthouse(url) {
             chromeFlags: [
                 "--headless",
                 "--disable-gpu",
-                "--no-sandbox"
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-extensions",
+                "--disable-background-networking"
             ]
         });
 
         const result = await lighthouse(url, {
             port: chrome.port,
             output: "json",
-            logLevel: "error"
+            logLevel: "error",
+
+            settings: {
+                maxWaitForLoad: 120000
+            }
         });
 
         return {
@@ -41,7 +48,7 @@ async function runLighthouse(url) {
             try {
                 // Give Windows time to release temp files
                 await new Promise(resolve =>
-                    setTimeout(resolve, 1000)
+                    setTimeout(resolve, 2000)
                 );
 
                 await chrome.kill();
