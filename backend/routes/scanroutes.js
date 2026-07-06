@@ -138,40 +138,89 @@ router.post("/scan", async (req, res) => {
 
         console.log("All scanners completed");
 
-        res.json({
-        url,
-    
-        scores: {
-            accessibility: lighthouseresults.accessibility,
-            performance: lighthouseresults.performance,
-            bestPractices: lighthouseresults.bestPractices,
-            seo: lighthouseresults.seo
-        },
-    
-        violations: mappedViolations,
+        console.log("Violations:", mappedViolations.length);
+        console.log("AI Fixes:", aiFixes.length);
+        console.log("Validations:", validations.length);
+        console.log("Guidance:", guidance.length);
 
-        aiFixes,
+        const response = {
 
-        validations,
-
-        guidance,
-
-        raw: {
-        axe: axeresult,
-        pa11y: pa11yresults,
-        lighthouse: lighthouseresults
-       },
-    
-        summary: {
-            totalViolations: mappedViolations.length,
-            rawViolations: normalizedViolations.length,
-            duplicatesRemoved:
+            url,
+        
+            scores: {
+                accessibility: lighthouseresults.accessibility,
+                performance: lighthouseresults.performance,
+                bestPractices: lighthouseresults.bestPractices,
+                seo: lighthouseresults.seo
+            },
+        
+            violations: mappedViolations,
+        
+            aiFixes,
+        
+            validations,
+        
+            guidance,
+        
+            summary: {
+                totalViolations: mappedViolations.length,
+                rawViolations: normalizedViolations.length,
+                duplicatesRemoved:
                     normalizedViolations.length -
                     deduplicatedviolations.length,
-            axeViolations: axeCount,
-            pa11yViolations: pa11yCount
-        }
-    });
+                axeViolations: axeCount,
+                pa11yViolations: pa11yCount
+            }
+        
+        };
+        
+        console.log(
+            "Response Size:",
+            JSON.stringify(response).length,
+            "bytes"
+        );
+
+        console.log("Sending response...");
+
+        res.json(response);
+
+        console.log("Response sent.");
+
+
+    //     res.json({
+    //     url,
+    
+    //     scores: {
+    //         accessibility: lighthouseresults.accessibility,
+    //         performance: lighthouseresults.performance,
+    //         bestPractices: lighthouseresults.bestPractices,
+    //         seo: lighthouseresults.seo
+    //     },
+    
+    //     violations: mappedViolations,
+
+    //     aiFixes,
+
+    //     validations,
+
+    //     guidance,
+
+    // //     raw: {
+    // //     axe: axeresult,
+    // //     pa11y: pa11yresults,
+    // //     lighthouse: lighthouseresults
+    // //    },
+    
+    //     summary: {
+    //         totalViolations: mappedViolations.length,
+    //         rawViolations: normalizedViolations.length,
+    //         duplicatesRemoved:
+    //                 normalizedViolations.length -
+    //                 deduplicatedviolations.length,
+    //         axeViolations: axeCount,
+    //         pa11yViolations: pa11yCount
+    //     }
+    // });
 
     } catch (error) {
 
