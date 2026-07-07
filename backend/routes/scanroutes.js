@@ -110,6 +110,7 @@ router.post("/scan", async (req, res) => {
             validations=[];
         }
 
+
         let guidance = [];
 
         try {
@@ -185,42 +186,6 @@ router.post("/scan", async (req, res) => {
         res.json(response);
 
         console.log("Response sent.");
-
-
-    //     res.json({
-    //     url,
-    
-    //     scores: {
-    //         accessibility: lighthouseresults.accessibility,
-    //         performance: lighthouseresults.performance,
-    //         bestPractices: lighthouseresults.bestPractices,
-    //         seo: lighthouseresults.seo
-    //     },
-    
-    //     violations: mappedViolations,
-
-    //     aiFixes,
-
-    //     validations,
-
-    //     guidance,
-
-    // //     raw: {
-    // //     axe: axeresult,
-    // //     pa11y: pa11yresults,
-    // //     lighthouse: lighthouseresults
-    // //    },
-    
-    //     summary: {
-    //         totalViolations: mappedViolations.length,
-    //         rawViolations: normalizedViolations.length,
-    //         duplicatesRemoved:
-    //                 normalizedViolations.length -
-    //                 deduplicatedviolations.length,
-    //         axeViolations: axeCount,
-    //         pa11yViolations: pa11yCount
-    //     }
-    // });
 
     } catch (error) {
 

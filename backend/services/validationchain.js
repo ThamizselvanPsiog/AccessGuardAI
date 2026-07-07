@@ -7,51 +7,79 @@ async function validateFixes(
     aiFixes
 ) {
 
-    const results = [];
+    // Step 1: Keep one violation + fix per unique ruleId
 
-    const count = Math.min(
-        violations.length,
-        aiFixes.length
+    const uniqueRules = [];
+
+    const seen = new Set();
+
+    for (let i = 0; i < violations.length; i++) {
+
+        const ruleId = violations[i].ruleId;
+
+        if (!seen.has(ruleId)) {
+
+            seen.add(ruleId);
+
+            uniqueRules.push({
+
+                violation: violations[i],
+
+                fix: aiFixes[i]?.fix,
+
+                ruleId
+
+            });
+
+        }
+
+    }
+
+    console.log(
+        `Validating ${uniqueRules.length} unique rule(s)...`
     );
 
-    for (
-        let i = 0;
-        i < count;
-        i++
-    ) {
+    // Step 2: Validate only unique rules
+
+    const validationMap = {};
+
+    for (const rule of uniqueRules) {
 
         try {
 
-            const validation =
+            validationMap[rule.ruleId] =
                 await validateFix(
-                    violations[i],
-                    aiFixes[i].fix
+                    rule.violation,
+                    rule.fix
                 );
-
-            results.push({
-                ruleId:
-                    aiFixes[i].ruleId,
-
-                validation
-            });
 
         } catch (err) {
 
-            results.push({
-                ruleId:
-                    aiFixes[i]?.ruleId ||
-                    "Unknown",
+            validationMap[rule.ruleId] = {
 
-                validation: {
-                    status: "ERROR",
-                    message:
-                        err.message
-                }
-            });
+                status: "ERROR",
+
+                message: err.message
+
+            };
+
         }
+
     }
 
-    return results;
+    // Step 3: Map validation back to every occurrence
+
+    return violations.map(v => ({
+
+        ruleId: v.ruleId,
+
+        selector: v.selector,
+
+        validation:
+            validationMap[v.ruleId]
+
+    }));
+
 }
 
 module.exports = {
