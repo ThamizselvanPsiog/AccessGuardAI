@@ -19,7 +19,7 @@ const {
 const {
     saveScan,
     saveViolations
-} = require("../services/databaseService");
+} = require("../services/databaseservice");
 
 const {
     processViolations
