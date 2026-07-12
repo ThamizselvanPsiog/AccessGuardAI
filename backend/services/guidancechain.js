@@ -1,5 +1,9 @@
 const {
-    generateGuidance
+
+    generateGuidance,
+
+    evaluateGuidance
+
 } = require("./geminiguidancegenerator");
 
 const BATCH_SIZE = 5;
@@ -10,15 +14,20 @@ async function processGuidance(
 
     try {
 
-        // Step 1: Keep only one violation per ruleId
-
         const uniqueViolations = [
+
             ...new Map(
+
                 violations.map(v => [
+
                     v.ruleId,
+
                     v
+
                 ])
+
             ).values()
+
         ];
 
         console.log(
@@ -29,8 +38,6 @@ async function processGuidance(
             `Unique Rules: ${uniqueViolations.length}`
         );
 
-        // Step 2: Split into batches
-
         const batches = [];
 
         for (
@@ -40,10 +47,12 @@ async function processGuidance(
         ) {
 
             batches.push(
+
                 uniqueViolations.slice(
                     i,
                     i + BATCH_SIZE
                 )
+
             );
 
         }
@@ -52,14 +61,12 @@ async function processGuidance(
             `Sending ${batches.length} batch(es) to Gemini...`
         );
 
-        // Step 3: Process each batch
-
         let uniqueGuidance = [];
 
         for (const batch of batches) {
 
             console.log(
-                `Processing batch (${batch.length} rule(s))`
+                `Generating guidance for ${batch.length} rule(s)...`
             );
 
             const response =
@@ -69,17 +76,48 @@ async function processGuidance(
 
         }
 
-        // Step 4: Build lookup table
+        let evaluations = [];
+
+        for (let i = 0; i < uniqueGuidance.length; i += BATCH_SIZE) {
+
+            const batch =
+                uniqueGuidance.slice(
+                    i,
+                    i + BATCH_SIZE
+                );
+
+            console.log(
+                `Evaluating guidance for ${batch.length} rule(s)...`
+            );
+
+            const result =
+                await evaluateGuidance(batch);
+
+            evaluations.push(...result);
+
+        }
 
         const guidanceMap = {};
 
         uniqueGuidance.forEach(g => {
 
-            guidanceMap[g.ruleId] = g;
+            guidanceMap[g.ruleId] = {
+
+                guidance: g
+
+            };
 
         });
 
-        // Step 5: Attach guidance back to every violation
+        evaluations.forEach(e => {
+
+            if (guidanceMap[e.ruleId]) {
+
+                guidanceMap[e.ruleId].evaluation = e;
+
+            }
+
+        });
 
         return violations.map(v => ({
 
@@ -88,7 +126,8 @@ async function processGuidance(
             selector: v.selector,
 
             guidance:
-                guidanceMap[v.ruleId] ||
+
+                guidanceMap[v.ruleId]?.guidance ||
 
                 {
 
@@ -103,6 +142,27 @@ async function processGuidance(
 
                     wcagReference:
                         v.wcagCriterion || "Unknown"
+
+                },
+
+            evaluation:
+
+                guidanceMap[v.ruleId]?.evaluation ||
+
+                {
+
+                    overallScore: 0,
+
+                    accuracy: 0,
+
+                    clarity: 0,
+
+                    actionability: 0,
+
+                    wcagCompliance: 0,
+
+                    feedback:
+                        "Evaluation unavailable."
 
                 }
 
@@ -135,6 +195,23 @@ async function processGuidance(
 
                 wcagReference:
                     v.wcagCriterion || "Unknown"
+
+            },
+
+            evaluation: {
+
+                overallScore: 0,
+
+                accuracy: 0,
+
+                clarity: 0,
+
+                actionability: 0,
+
+                wcagCompliance: 0,
+
+                feedback:
+                    "Evaluation unavailable."
 
             }
 

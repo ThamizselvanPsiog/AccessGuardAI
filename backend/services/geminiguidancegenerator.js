@@ -34,41 +34,30 @@ You are a senior WCAG 2.1 AA accessibility consultant.
 Generate concise remediation guidance for each accessibility violation.
 
 Requirements:
-- Produce one JSON object for each rule.
-- Keep each field concise.
-- summary: maximum 40 words.
-- whyItMatters: maximum 60 words.
-- howToFix: maximum 80 words.
-- bestPractice: maximum 50 words.
-- Use plain English suitable for web developers.
-- Do not repeat the violation description.
-- Use the provided WCAG information where applicable.
-- Return the same number of objects as the number of violations provided.
+- Produce one JSON object per rule.
+- summary <= 40 words.
+- whyItMatters <= 60 words.
+- howToFix <= 80 words.
+- bestPractice <= 50 words.
+- Use plain English.
+- Return ONLY a JSON array.
 
 Violations:
 
 ${JSON.stringify(violationList, null, 2)}
 
-Return ONLY a valid JSON array.
-
-Example:
+Return:
 
 [
-  {
-    "ruleId": "image-alt",
-    "summary": "",
-    "whyItMatters": "",
-    "howToFix": "",
-    "bestPractice": "",
-    "wcagReference": ""
-  }
+    {
+        "ruleId":"",
+        "summary":"",
+        "whyItMatters":"",
+        "howToFix":"",
+        "bestPractice":"",
+        "wcagReference":""
+    }
 ]
-
-Do NOT include:
-- Markdown
-- Triple backticks
-- Explanations
-- Additional text
 `;
 
     const response =
@@ -90,22 +79,18 @@ Do NOT include:
 
         return JSON.parse(text);
 
-    }
-    catch(err){
+    } catch(err){
 
         console.error(
-            "Gemini JSON Parse Error:",
+            "Gemini Guidance Parse Error:",
             err.message
         );
-
-        console.error(text);
 
         return violations.map(v => ({
 
             ruleId: v.ruleId,
 
-            summary:
-                "Unable to generate guidance.",
+            summary: "Unable to generate guidance.",
 
             whyItMatters: "",
 
@@ -122,6 +107,102 @@ Do NOT include:
 
 }
 
+async function evaluateGuidance(guidanceList) {
+
+    if (!guidanceList.length) {
+        return [];
+    }
+
+    const prompt = `
+You are acting as an LLM judge.
+
+Evaluate the quality of each accessibility guidance.
+
+Score each guidance from 1-5 for:
+
+- accuracy
+- clarity
+- actionability
+- wcagCompliance
+
+Also provide:
+
+- overallScore
+- feedback
+
+Return ONLY valid JSON.
+
+Example:
+
+[
+    {
+        "ruleId":"image-alt",
+        "overallScore":4.8,
+        "accuracy":5,
+        "clarity":5,
+        "actionability":4,
+        "wcagCompliance":5,
+        "feedback":"Excellent guidance."
+    }
+]
+
+Guidance:
+
+${JSON.stringify(guidanceList, null, 2)}
+`;
+
+    const response =
+        await ai.models.generateContent({
+
+            model: "gemini-2.5-flash",
+
+            contents: prompt
+
+        });
+
+    const text =
+        String(response.text)
+            .replace(/```json/gi, "")
+            .replace(/```/g, "")
+            .trim();
+
+    try {
+
+        return JSON.parse(text);
+
+    } catch(err){
+
+        console.error(
+            "Guidance Judge Parse Error:",
+            err.message
+        );
+
+        return guidanceList.map(g => ({
+
+            ruleId: g.ruleId,
+
+            overallScore: 0,
+
+            accuracy: 0,
+
+            clarity: 0,
+
+            actionability: 0,
+
+            wcagCompliance: 0,
+
+            feedback: "Evaluation unavailable."
+
+        }));
+
+    }
+
+}
+
 module.exports = {
-    generateGuidance
+
+    generateGuidance,
+
+    evaluateGuidance
+
 };
