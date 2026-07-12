@@ -78,6 +78,13 @@ jobs:
         run: cat report.json
 
       ####################################################
+      # Validate Report
+      ####################################################
+
+      - name: Validate Pipeline Output
+        run: node scripts/validatepipeline.js
+
+      ####################################################
       # Upload Report
       ####################################################
 
