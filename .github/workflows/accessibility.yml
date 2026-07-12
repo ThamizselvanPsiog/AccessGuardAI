@@ -89,7 +89,7 @@ jobs:
       ####################################################
 
       - name: Run Quality Gate
-        run: node scripts/qualityGate.js
+        run: node scripts/qualitygate.js
 
       ####################################################
       # Upload Report
