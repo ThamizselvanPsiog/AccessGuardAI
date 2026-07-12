@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "scan": "node backend/server.js"
+    "scan": "node backend/server.js",
+    "start": "node backend/server.js"
   },
   "keywords": [],
   "author": "",
