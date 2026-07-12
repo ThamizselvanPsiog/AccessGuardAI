@@ -11,6 +11,7 @@ async function runLighthouse(url) {
                 "--disable-gpu",
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
+                "--disable-setuid-sandbox",
                 "--disable-extensions",
                 "--disable-background-networking"
             ]
