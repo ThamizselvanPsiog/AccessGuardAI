@@ -85,6 +85,13 @@ jobs:
         run: node scripts/validatepipeline.js
 
       ####################################################
+      # Quality Gate
+      ####################################################
+
+      - name: Run Quality Gate
+        run: node scripts/qualityGate.js
+
+      ####################################################
       # Upload Report
       ####################################################
 
