@@ -261,7 +261,7 @@ jobs:
       - name: Extract Scan ID
         run: |
 
-          SCAN_ID=$(jq -r '.scan.id' report.json)
+          SCAN_ID=$(jq -r '.scanId' report.json)
 
           if [ -z "$SCAN_ID" ] || [ "$SCAN_ID" = "null" ]; then
             echo "Unable to extract scan ID."
