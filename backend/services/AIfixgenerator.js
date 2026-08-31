@@ -1,11 +1,10 @@
 require("dotenv").config();
 
-const { ChatGroq } =
-    require("@langchain/groq");
+const { ChatGroq } = require("@langchain/groq");
 
 const model = new ChatGroq({
     apiKey: process.env.GROQ_API_KEY,
-    model: "llama-3.3-70b-versatile"
+    model: "openai/gpt-oss-120b"
 });
 
 async function generateFix(violation) {
@@ -18,23 +17,54 @@ Rule: ${violation.ruleId}
 Description: ${violation.description}
 WCAG: ${violation.wcagCriterion}
 
-Generate:
+Return ONLY valid JSON in exactly this format:
 
-1. Explanation
-2. Incorrect HTML
-3. Corrected HTML
-4. ARIA fix if needed
+{
+    "explanation": "",
+    "incorrectHTML": "",
+    "correctedHTML": "",
+    "ariaFix": ""
+}
 
-Return valid JSON only.
-Do not use markdown.
-Do not use code fences.
-Do not include explanations outside JSON.
+Rules:
+- explanation: briefly explain the problem.
+- incorrectHTML: show the problematic HTML.
+- correctedHTML: show the corrected HTML.
+- ariaFix: provide the ARIA fix only if needed; otherwise use "".
+- Do not use markdown.
+- Do not use code fences.
+- Do not add any other fields.
 `;
 
-    const response =
-        await model.invoke(prompt);
+    const response = await model.invoke(prompt);
 
-    return JSON.parse(response.content);
+    let content = String(response.content)
+        .replace(/```json/gi, "")
+        .replace(/```/g, "")
+        .trim();
+
+    /*
+     * Handle accidental extra text around JSON.
+     */
+    const start = content.indexOf("{");
+    const end = content.lastIndexOf("}");
+
+    if (start !== -1 && end !== -1) {
+        content = content.substring(start, end + 1);
+    }
+
+    const result = JSON.parse(content);
+
+    /*
+     * Always return the exact structure expected
+     * by the frontend/database.
+     */
+    return {
+        explanation: result.explanation || "",
+        incorrectHTML: result.incorrectHTML || "",
+        correctedHTML: result.correctedHTML || "",
+        ariaFix: result.ariaFix || ""
+    };
 }
 
 module.exports = {

@@ -6,27 +6,132 @@ const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY
 });
 
+const MODEL = "gemini-2.5-flash";
+
+/*
+ * ============================================================
+ * GEMINI REQUEST HELPER
+ * ============================================================
+ *
+ * Centralizes Gemini API handling.
+ *
+ * Important:
+ * - 429 / RESOURCE_EXHAUSTED is NOT retried.
+ * - This prevents repeatedly hitting an exhausted quota.
+ * - Other errors are also returned safely.
+ * ============================================================
+ */
+
+async function callGemini(prompt) {
+
+    try {
+
+        const response =
+            await ai.models.generateContent({
+                model: MODEL,
+                contents: prompt
+            });
+
+        return String(
+            response?.text || ""
+        )
+            .replace(/```json/gi, "")
+            .replace(/```/g, "")
+            .trim();
+
+    } catch (err) {
+
+        const message =
+            err?.message ||
+            err?.error?.message ||
+            String(err);
+
+        /*
+         * ================================================
+         * QUOTA ERROR
+         * ================================================
+         */
+
+        if (
+            message.includes("429") ||
+            message.includes("RESOURCE_EXHAUSTED") ||
+            message
+                .toLowerCase()
+                .includes("quota exceeded")
+        ) {
+
+            console.error(
+                "Gemini quota exceeded. Skipping this Gemini request."
+            );
+
+            return null;
+        }
+
+        /*
+         * ================================================
+         * OTHER GEMINI ERROR
+         * ================================================
+         */
+
+        console.error(
+            "Gemini API Error:",
+            message
+        );
+
+        return null;
+    }
+}
+
+
+/*
+ * ============================================================
+ * GENERATE GUIDANCE
+ * ============================================================
+ */
+
 async function generateGuidance(violations) {
 
-    if (!violations.length) {
+    if (
+        !Array.isArray(violations) ||
+        violations.length === 0
+    ) {
         return [];
     }
 
-    const violationList = violations.map(v => ({
 
-        ruleId: v.ruleId,
+    /*
+     * ================================================
+     * PREPARE VIOLATIONS
+     * ================================================
+     */
 
-        description: v.description,
+    const violationList =
+        violations.map(v => ({
+            ruleId:
+                v.ruleId,
 
-        severity: v.severity,
+            description:
+                v.description,
 
-        wcagCategory: v.wcagCategory,
+            severity:
+                v.severity,
 
-        wcagCriterion: v.wcagCriterion,
+            wcagCategory:
+                v.wcagCategory,
 
-        wcagLevel: v.wcagLevel
+            wcagCriterion:
+                v.wcagCriterion,
 
-    }));
+            wcagLevel:
+                v.wcagLevel
+        }));
+
+
+    /*
+     * ================================================
+     * PROMPT
+     * ================================================
+     */
 
     const prompt = `
 You are a senior WCAG 2.1 AA accessibility consultant.
@@ -34,84 +139,306 @@ You are a senior WCAG 2.1 AA accessibility consultant.
 Generate concise remediation guidance for each accessibility violation.
 
 Requirements:
-- Produce one JSON object per rule.
+
+- Produce exactly one JSON object per rule.
 - summary <= 40 words.
 - whyItMatters <= 60 words.
 - howToFix <= 80 words.
 - bestPractice <= 50 words.
 - Use plain English.
-- Return ONLY a JSON array.
+- Base the answer only on the supplied violation.
+- Do not invent page-specific facts.
+- Do not invent WCAG criteria.
+- Preserve the supplied ruleId.
+- Return ONLY valid JSON.
+- Do not use markdown.
+- Do not use code fences.
 
 Violations:
 
-${JSON.stringify(violationList, null, 2)}
+${JSON.stringify(
+    violationList,
+    null,
+    2
+)}
 
-Return:
+Return exactly:
 
 [
     {
-        "ruleId":"",
-        "summary":"",
-        "whyItMatters":"",
-        "howToFix":"",
-        "bestPractice":"",
-        "wcagReference":""
+        "ruleId": "",
+        "summary": "",
+        "whyItMatters": "",
+        "howToFix": "",
+        "bestPractice": "",
+        "wcagReference": ""
     }
 ]
 `;
 
-    const response =
-        await ai.models.generateContent({
 
-            model: "gemini-2.5-flash",
-
-            contents: prompt
-
-        });
+    /*
+     * ================================================
+     * CALL GEMINI
+     * ================================================
+     */
 
     const text =
-        String(response.text)
-            .replace(/```json/gi, "")
-            .replace(/```/g, "")
-            .trim();
+        await callGemini(prompt);
+
+
+    /*
+     * ================================================
+     * GEMINI UNAVAILABLE
+     * ================================================
+     *
+     * IMPORTANT:
+     * Return a predictable structure.
+     *
+     * This prevents the frontend from showing
+     * completely empty guidance.
+     * ================================================
+     */
+
+    if (!text) {
+
+        return violations.map(v => ({
+
+            ruleId:
+                v.ruleId,
+
+            summary:
+                "AI guidance is temporarily unavailable for this violation.",
+
+            whyItMatters:
+                v.description ||
+                "This accessibility issue may affect users of assistive technologies.",
+
+            howToFix:
+                v.wcagCriterion
+                    ? `Review the violation and correct the affected element according to WCAG ${v.wcagCriterion}.`
+                    : "Review the affected element and correct it according to the applicable WCAG requirement.",
+
+            bestPractice:
+                "Use semantic HTML and accessible native controls whenever possible.",
+
+            wcagReference:
+                v.wcagCriterion ||
+                "Unknown",
+
+            /*
+             * Internal marker.
+             *
+             * guidancechain can use this to know that
+             * Gemini did not generate this content.
+             */
+            _geminiUnavailable:
+                true
+        }));
+    }
+
+
+    /*
+     * ================================================
+     * PARSE JSON
+     * ================================================
+     */
 
     try {
 
-        return JSON.parse(text);
+        const parsed =
+            JSON.parse(text);
 
-    } catch(err){
+
+        if (!Array.isArray(parsed)) {
+
+            throw new Error(
+                "Gemini guidance response was not an array."
+            );
+        }
+
+
+        /*
+         * Make sure every supplied rule has
+         * a corresponding guidance object.
+         */
+
+        return violations.map(v => {
+
+            const result =
+                parsed.find(
+                    item =>
+                        item?.ruleId === v.ruleId
+                );
+
+
+            if (!result) {
+
+                return {
+
+                    ruleId:
+                        v.ruleId,
+
+                    summary:
+                        "Guidance was not returned for this rule.",
+
+                    whyItMatters:
+                        v.description ||
+                        "",
+
+                    howToFix:
+                        v.wcagCriterion
+                            ? `Review the issue against WCAG ${v.wcagCriterion}.`
+                            : "Review the affected element against the applicable WCAG requirement.",
+
+                    bestPractice:
+                        "Use semantic HTML and accessible native controls whenever possible.",
+
+                    wcagReference:
+                        v.wcagCriterion ||
+                        "Unknown"
+                };
+            }
+
+
+            return {
+
+                ruleId:
+                    v.ruleId,
+
+                summary:
+                    result.summary || "",
+
+                whyItMatters:
+                    result.whyItMatters || "",
+
+                howToFix:
+                    result.howToFix || "",
+
+                bestPractice:
+                    result.bestPractice || "",
+
+                wcagReference:
+                    result.wcagReference ||
+                    v.wcagCriterion ||
+                    "Unknown"
+            };
+
+        });
+
+    } catch (err) {
 
         console.error(
             "Gemini Guidance Parse Error:",
             err.message
         );
 
+
         return violations.map(v => ({
 
-            ruleId: v.ruleId,
+            ruleId:
+                v.ruleId,
 
-            summary: "Unable to generate guidance.",
+            summary:
+                "Unable to parse AI-generated guidance.",
 
-            whyItMatters: "",
+            whyItMatters:
+                v.description ||
+                "",
 
-            howToFix: "",
+            howToFix:
+                v.wcagCriterion
+                    ? `Review and correct the issue according to WCAG ${v.wcagCriterion}.`
+                    : "Review the affected element against the applicable WCAG requirement.",
 
-            bestPractice: "",
+            bestPractice:
+                "Use semantic HTML and accessible native controls whenever possible.",
 
             wcagReference:
-                v.wcagCriterion || "Unknown"
-
+                v.wcagCriterion ||
+                "Unknown"
         }));
-
     }
-
 }
+
+
+/*
+ * ============================================================
+ * EVALUATE GUIDANCE
+ * ============================================================
+ */
 
 async function evaluateGuidance(guidanceList) {
 
-    if (!guidanceList.length) {
+    if (
+        !Array.isArray(guidanceList) ||
+        guidanceList.length === 0
+    ) {
         return [];
     }
+
+
+    /*
+     * ========================================================
+     * IMPORTANT
+     *
+     * If guidance was already generated as a fallback
+     * because Gemini quota was exhausted, DO NOT make
+     * another Gemini request.
+     *
+     * This prevents:
+     *
+     * guidance request -> 429
+     * evaluation request -> 429
+     * evaluation request -> 429
+     * ...
+     * ========================================================
+     */
+
+    const geminiUnavailable =
+        guidanceList.some(
+            item =>
+                item?._geminiUnavailable === true
+        );
+
+
+    if (geminiUnavailable) {
+
+        console.log(
+            "Skipping Gemini guidance evaluation because guidance generation was unavailable."
+        );
+
+        return guidanceList.map(g => ({
+
+            ruleId:
+                g.ruleId,
+
+            overallScore:
+                0,
+
+            accuracy:
+                0,
+
+            clarity:
+                0,
+
+            actionability:
+                0,
+
+            wcagCompliance:
+                0,
+
+            feedback:
+                "AI evaluation unavailable because Gemini guidance generation was unavailable."
+        }));
+    }
+
+
+    /*
+     * ================================================
+     * EVALUATION PROMPT
+     * ================================================
+     */
 
     const prompt = `
 You are acting as an LLM judge.
@@ -130,74 +457,216 @@ Also provide:
 - overallScore
 - feedback
 
-Return ONLY valid JSON.
+Requirements:
 
-Example:
-
-[
-    {
-        "ruleId":"image-alt",
-        "overallScore":4.8,
-        "accuracy":5,
-        "clarity":5,
-        "actionability":4,
-        "wcagCompliance":5,
-        "feedback":"Excellent guidance."
-    }
-]
+- Produce exactly one JSON object per rule.
+- Preserve the supplied ruleId.
+- Return ONLY valid JSON.
+- Do not use markdown.
+- Do not use code fences.
 
 Guidance:
 
-${JSON.stringify(guidanceList, null, 2)}
+${JSON.stringify(
+    guidanceList,
+    null,
+    2
+)}
+
+Return:
+
+[
+    {
+        "ruleId": "",
+        "overallScore": 0,
+        "accuracy": 0,
+        "clarity": 0,
+        "actionability": 0,
+        "wcagCompliance": 0,
+        "feedback": ""
+    }
+]
 `;
 
-    const response =
-        await ai.models.generateContent({
 
-            model: "gemini-2.5-flash",
-
-            contents: prompt
-
-        });
+    /*
+     * ================================================
+     * CALL GEMINI
+     * ================================================
+     */
 
     const text =
-        String(response.text)
-            .replace(/```json/gi, "")
-            .replace(/```/g, "")
-            .trim();
+        await callGemini(prompt);
+
+
+    /*
+     * ================================================
+     * GEMINI UNAVAILABLE
+     * ================================================
+     */
+
+    if (!text) {
+
+        return guidanceList.map(g => ({
+
+            ruleId:
+                g.ruleId,
+
+            overallScore:
+                0,
+
+            accuracy:
+                0,
+
+            clarity:
+                0,
+
+            actionability:
+                0,
+
+            wcagCompliance:
+                0,
+
+            feedback:
+                "AI evaluation is temporarily unavailable."
+        }));
+    }
+
+
+    /*
+     * ================================================
+     * PARSE EVALUATION
+     * ================================================
+     */
 
     try {
 
-        return JSON.parse(text);
+        const parsed =
+            JSON.parse(text);
 
-    } catch(err){
+
+        if (!Array.isArray(parsed)) {
+
+            throw new Error(
+                "Gemini evaluation response was not an array."
+            );
+        }
+
+
+        return guidanceList.map(g => {
+
+            const result =
+                parsed.find(
+                    item =>
+                        item?.ruleId === g.ruleId
+                );
+
+
+            if (!result) {
+
+                return {
+
+                    ruleId:
+                        g.ruleId,
+
+                    overallScore:
+                        0,
+
+                    accuracy:
+                        0,
+
+                    clarity:
+                        0,
+
+                    actionability:
+                        0,
+
+                    wcagCompliance:
+                        0,
+
+                    feedback:
+                        "Evaluation was not returned for this rule."
+                };
+            }
+
+
+            return {
+
+                ruleId:
+                    g.ruleId,
+
+                overallScore:
+                    Number(
+                        result.overallScore || 0
+                    ),
+
+                accuracy:
+                    Number(
+                        result.accuracy || 0
+                    ),
+
+                clarity:
+                    Number(
+                        result.clarity || 0
+                    ),
+
+                actionability:
+                    Number(
+                        result.actionability || 0
+                    ),
+
+                wcagCompliance:
+                    Number(
+                        result.wcagCompliance || 0
+                    ),
+
+                feedback:
+                    result.feedback ||
+                    ""
+            };
+
+        });
+
+    } catch (err) {
 
         console.error(
             "Guidance Judge Parse Error:",
             err.message
         );
 
+
         return guidanceList.map(g => ({
 
-            ruleId: g.ruleId,
+            ruleId:
+                g.ruleId,
 
-            overallScore: 0,
+            overallScore:
+                0,
 
-            accuracy: 0,
+            accuracy:
+                0,
 
-            clarity: 0,
+            clarity:
+                0,
 
-            actionability: 0,
+            actionability:
+                0,
 
-            wcagCompliance: 0,
+            wcagCompliance:
+                0,
 
-            feedback: "Evaluation unavailable."
-
+            feedback:
+                "Evaluation unavailable."
         }));
-
     }
-
 }
+
+
+/*
+ * ============================================================
+ * EXPORTS
+ * ============================================================
+ */
 
 module.exports = {
 
