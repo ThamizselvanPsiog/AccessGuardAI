@@ -15,88 +15,476 @@ jobs:
 
     steps:
 
+      # ==========================================================
+      # CHECKOUT
+      # ==========================================================
+
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+
+      # ==========================================================
+      # NODE.JS
+      # ==========================================================
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+
+
+      # ==========================================================
+      # INSTALL DEPENDENCIES
+      # ==========================================================
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
-      ####################################################
-      # Playwright Browser
-      ####################################################
+
+      # ==========================================================
+      # PLAYWRIGHT
+      # ==========================================================
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      ####################################################
-      # Chrome for Pa11y / Lighthouse
-      ####################################################
+
+      # ==========================================================
+      # PUPPETEER / LIGHTHOUSE CHROME
+      # ==========================================================
 
       - name: Install Chrome for Puppeteer
         run: npx puppeteer browsers install chrome
 
-      ####################################################
-      # Environment Variables
-      ####################################################
+
+      # ==========================================================
+      # ENVIRONMENT
+      # ==========================================================
 
       - name: Create .env
         run: |
           echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" >> .env
           echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
 
-      ####################################################
-      # Start Backend
-      ####################################################
+
+      # ==========================================================
+      # START BACKEND
+      # ==========================================================
 
       - name: Start Backend
-        run: npm start &
+        run: |
+          npm start > backend.log 2>&1 &
+          echo $! > backend.pid
+
+
+      # ==========================================================
+      # WAIT FOR BACKEND
+      # ==========================================================
 
       - name: Wait for Backend
-        run: sleep 10
+        run: |
+          echo "Waiting for AccessGuardAI backend..."
 
-      ####################################################
-      # Run Scan
-      ####################################################
+          for i in {1..30}; do
+
+            if curl --silent --fail \
+              http://localhost:5000/api/health \
+              > /dev/null; then
+
+              echo "Backend is ready."
+              exit 0
+
+            fi
+
+            echo "Backend not ready yet..."
+            sleep 2
+
+          done
+
+          echo "Backend failed to start."
+          echo "================ BACKEND LOG ================"
+          cat backend.log
+          echo "=============================================="
+
+          exit 1
+
+
+      # ==========================================================
+      # CREATE CI USER
+      #
+      # The application now requires authentication before
+      # running a scan.
+      #
+      # A unique user is created for every GitHub Actions run.
+      # ==========================================================
+
+      - name: Create CI Test User
+        run: |
+
+          CI_EMAIL="github-actions-${GITHUB_RUN_ID}@accessguardai.test"
+
+          echo "CI_EMAIL=${CI_EMAIL}" >> "$GITHUB_ENV"
+
+          REGISTER_RESPONSE=$(curl \
+            --silent \
+            --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data "{
+              \"name\":\"GitHub Actions\",
+              \"email\":\"${CI_EMAIL}\",
+              \"password\":\"AccessGuardCI123!\"
+            }" \
+            http://localhost:5000/api/auth/register)
+
+          echo "Registration response:"
+          echo "$REGISTER_RESPONSE"
+
+          echo "$REGISTER_RESPONSE" | jq empty
+
+
+      # ==========================================================
+      # LOGIN
+      #
+      # Get JWT token required by protected endpoints.
+      # ==========================================================
+
+      - name: Authenticate CI User
+        run: |
+
+          LOGIN_RESPONSE=$(curl \
+            --silent \
+            --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --data "{
+              \"email\":\"${CI_EMAIL}\",
+              \"password\":\"AccessGuardCI123!\"
+            }" \
+            http://localhost:5000/api/auth/login)
+
+          echo "Login response received."
+
+          echo "$LOGIN_RESPONSE" | jq empty
+
+          SUCCESS=$(echo "$LOGIN_RESPONSE" | jq -r '.success')
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Authentication failed."
+            echo "$LOGIN_RESPONSE"
+            exit 1
+          fi
+
+          TOKEN=$(echo "$LOGIN_RESPONSE" | jq -r '.token')
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "JWT token was not returned."
+            exit 1
+          fi
+
+          echo "ACCESS_TOKEN=${TOKEN}" >> "$GITHUB_ENV"
+
+          echo "Authentication successful."
+
+
+      # ==========================================================
+      # RUN ACCESSIBILITY SCAN
+      #
+      # POST /api/scan is protected by authenticateToken.
+      # ==========================================================
 
       - name: Run Accessibility Scan
         run: |
-          curl -X POST http://localhost:5000/api/scan \
-          -H "Content-Type: application/json" \
-          -d '{"url":"https://www.example.com"}' \
-          > report.json
 
-      ####################################################
-      # Show Report
-      ####################################################
+          echo "Starting accessibility scan..."
 
-      - name: Show Report
-        run: cat report.json
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request POST \
+            --header "Content-Type: application/json" \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            --data '{
+              "url":"https://www.example.com"
+            }' \
+            http://localhost:5000/api/scan \
+            > report.json
 
-      ####################################################
-      # Validate Report
-      ####################################################
+          echo "Accessibility scan completed."
+
+
+      # ==========================================================
+      # SHOW SCAN RESULT
+      # ==========================================================
+
+      - name: Show Scan Report
+        run: |
+
+          echo "================ SCAN REPORT ================"
+
+          cat report.json
+
+          echo
+          echo "=============================================="
+
+
+      # ==========================================================
+      # VALIDATE JSON RESPONSE
+      # ==========================================================
+
+      - name: Validate Scan Response
+        run: |
+
+          jq empty report.json
+
+          SUCCESS=$(jq -r '.success' report.json)
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Scan was not successful."
+            exit 1
+          fi
+
+
+      # ==========================================================
+      # EXTRACT SCAN ID
+      #
+      # The POST /api/scan response contains:
+      #
+      # scan.id
+      #
+      # This ID is used by the rest of the application.
+      # ==========================================================
+
+      - name: Extract Scan ID
+        run: |
+
+          SCAN_ID=$(jq -r '.scan.id' report.json)
+
+          if [ -z "$SCAN_ID" ] || [ "$SCAN_ID" = "null" ]; then
+            echo "Unable to extract scan ID."
+            exit 1
+          fi
+
+          echo "SCAN_ID=${SCAN_ID}" >> "$GITHUB_ENV"
+
+          echo "Created Scan ID: ${SCAN_ID}"
+
+
+      # ==========================================================
+      # TEST SCAN DETAILS
+      #
+      # GET /api/scan/:id
+      # ==========================================================
+
+      - name: Verify Scan Details
+        run: |
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request GET \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "http://localhost:5000/api/scan/${SCAN_ID}" \
+            > scan-details.json
+
+          echo "================ SCAN DETAILS ================"
+
+          cat scan-details.json
+
+          echo
+          echo "=============================================="
+
+
+      # ==========================================================
+      # TEST SCAN HISTORY
+      #
+      # GET /api/scan
+      # ==========================================================
+
+      - name: Verify Scan History
+        run: |
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request GET \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            http://localhost:5000/api/scan \
+            > scan-history.json
+
+          echo "================ SCAN HISTORY ================"
+
+          cat scan-history.json
+
+          echo
+          echo "=============================================="
+
+
+      # ==========================================================
+      # TEST DASHBOARD
+      #
+      # GET /api/dashboard
+      # ==========================================================
+
+      - name: Verify Dashboard
+        run: |
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request GET \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            http://localhost:5000/api/dashboard \
+            > dashboard.json
+
+          echo "================ DASHBOARD =================="
+
+          cat dashboard.json
+
+          echo
+          echo "=============================================="
+
+
+      # ==========================================================
+      # TEST ANALYTICS
+      #
+      # GET /api/analytics
+      # ==========================================================
+
+      - name: Verify Analytics
+        run: |
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request GET \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            http://localhost:5000/api/analytics \
+            > analytics.json
+
+          echo "================ ANALYTICS =================="
+
+          cat analytics.json
+
+          echo
+          echo "=============================================="
+
+
+      # ==========================================================
+      # TEST AI REMEDIATION
+      #
+      # GET /api/scan/:scanId/remediation
+      # ==========================================================
+
+      - name: Verify AI Remediation
+        run: |
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request GET \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "http://localhost:5000/api/scan/${SCAN_ID}/remediation" \
+            > remediation.json
+
+          echo "============== AI REMEDIATION ==============="
+
+          cat remediation.json
+
+          echo
+          echo "=============================================="
+
+
+      # ==========================================================
+      # GENERATE PDF REPORT
+      #
+      # GET /api/scan/:scanId/report
+      # ==========================================================
+
+      - name: Generate PDF Report
+        run: |
+
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request GET \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "http://localhost:5000/api/scan/${SCAN_ID}/report" \
+            --output accessibility-report.pdf
+
+          echo "PDF report generated."
+
+          if [ ! -s accessibility-report.pdf ]; then
+            echo "PDF report is empty."
+            exit 1
+          fi
+
+          file accessibility-report.pdf
+
+
+      # ==========================================================
+      # VALIDATE PIPELINE OUTPUT
+      # ==========================================================
 
       - name: Validate Pipeline Output
-        run: node scripts/validatepipeline.js
+        run: |
 
-      ####################################################
-      # Quality Gate
-      ####################################################
+          node scripts/validatepipeline.js
+
+
+      # ==========================================================
+      # QUALITY GATE
+      # ==========================================================
 
       - name: Run Quality Gate
-        run: node scripts/qualitygate.js
+        run: |
 
-      ####################################################
-      # Upload Report
-      ####################################################
+          node scripts/qualitygate.js
 
-      - name: Upload Report
+
+      # ==========================================================
+      # SHOW BACKEND LOGS
+      #
+      # Useful when the workflow fails.
+      # ==========================================================
+
+      - name: Show Backend Logs
+        if: always()
+        run: |
+
+          echo "================ BACKEND LOG ================"
+
+          cat backend.log || true
+
+          echo
+          echo "=============================================="
+
+
+      # ==========================================================
+      # UPLOAD PIPELINE ARTIFACTS
+      # ==========================================================
+
+      - name: Upload Accessibility Artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: accessibility-report
-          path: report.json
+          name: accessibility-pipeline-results
+          path: |
+            report.json
+            scan-details.json
+            scan-history.json
+            dashboard.json
+            analytics.json
+            remediation.json
+            accessibility-report.pdf
+            backend.log
+          if-no-files-found: warn
