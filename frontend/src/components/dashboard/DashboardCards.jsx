@@ -5,7 +5,7 @@ import {
   FiCpu,
 } from "react-icons/fi";
 
-import StatCard from "../cards/StatCard";
+import StatCard from "../cards/Statcard";
 
 export default function DashboardCards({
   overview,
