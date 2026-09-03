@@ -4,7 +4,7 @@ import DashboardCards from "../../components/dashboard/DashboardCards";
 import DashboardCharts from "../../components/dashboard/DashboardCharts";
 import DashboardInsights from "../../components/dashboard/DashboardInsights";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 export default function Dashboard() {
   const [dashboard, setDashboard] = useState(null);

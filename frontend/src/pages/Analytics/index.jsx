@@ -5,7 +5,7 @@ import SeverityChart from "../../components/analytics/SeverityChart";
 import DetectionSources from "../../components/analytics/DetectionSources";
 import TopAccessibilityRules from "../../components/analytics/TopAccessibilityRules";
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
 export default function Analytics() {
 

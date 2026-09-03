@@ -11,6 +11,8 @@ export default function NewScan() {
   const [scanResult, setScanResult] = useState(null);
   const [scanError, setScanError] = useState("");
 
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+
   /* ================================================= */
   /* START SCAN */
   /* ================================================= */
@@ -30,7 +32,7 @@ export default function NewScan() {
       }
 
       const response = await fetch(
-        "http://localhost:5000/api/scan",
+        `${API_BASE_URL}/scan`,
         {
           method: "POST",
 
