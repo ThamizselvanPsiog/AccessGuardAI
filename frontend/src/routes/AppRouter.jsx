@@ -9,8 +9,8 @@ import Analytics from "../pages/Analytics";
 import AIRemediation from "../pages/AIRemediation";
 import Settings from "../pages/Settings";
 
-import Login from "../pages/auth/Login";
-import Register from "../pages/auth/Register";
+import Login from "../pages/Auth/Login";
+import Register from "../pages/Auth/Register";
 
 import ProtectedRoute from "../components/auth/ProtectedRoute";
 
