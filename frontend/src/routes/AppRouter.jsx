@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import MainLayout from "../layouts/MainLayout";
+import MainLayout from "../layouts/Mainlayout";
 
 import Dashboard from "../pages/Dashboard";
 import NewScan from "../pages/NewScan";
