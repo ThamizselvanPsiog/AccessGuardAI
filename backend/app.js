@@ -11,7 +11,12 @@ const analyticsRoutes = require("./routes/analyticsroutes");
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Authorization", "Content-Type"]
+}));
+
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
