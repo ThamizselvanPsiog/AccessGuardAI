@@ -7,6 +7,10 @@ import { useAuth } from "../../context/AuthContext";
 import Background from "../../layout/Background/Background";
 import AppAlert from "../../components/common/AppAlert";
 
+// Production-grade email format validation
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -16,29 +20,43 @@ export default function Login() {
 
   const [error, setError] = useState("");
   const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState("error");
 
   const handleLogin = async (e) => {
     e.preventDefault();
 
-    // Clear previous errors
+    // Clear previous alerts/errors
     setError("");
     setShowAlert(false);
 
+    const trimmedEmail = email.trim();
+
     // Validate email
-    if (!email.trim()) {
+    if (!trimmedEmail) {
       setError("Please enter your email.");
+      setAlertType("error");
+      setShowAlert(true);
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      setAlertType("error");
+      setShowAlert(true);
       return;
     }
 
     // Validate password
-    if (!password.trim()) {
+    if (!password) {
       setError("Please enter your password.");
+      setAlertType("error");
+      setShowAlert(true);
       return;
     }
 
     try {
       const result = await login(
-        email.trim(),
+        trimmedEmail,
         password
       );
 
@@ -49,6 +67,7 @@ export default function Login() {
           "Invalid email or password.";
 
         setError(message);
+        setAlertType("error");
         setShowAlert(true);
 
         /*
@@ -63,7 +82,14 @@ export default function Login() {
       }
 
       // Login successful
-      navigate("/dashboard");
+      setError("Login successful.");
+      setAlertType("success");
+      setShowAlert(true);
+
+      // Give the success alert time to be visible
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1000);
 
     } catch (error) {
       console.error("Login error:", error);
@@ -72,6 +98,7 @@ export default function Login() {
         "Unable to sign in. Please try again."
       );
 
+      setAlertType("error");
       setShowAlert(true);
 
       setPassword("");
@@ -89,7 +116,7 @@ export default function Login() {
       <AppAlert
         show={showAlert}
         message={error}
-        type="error"
+        type={alertType}
         onClose={() => setShowAlert(false)}
       />
 
@@ -195,7 +222,6 @@ export default function Login() {
 
           </div>
 
-
           {/* Heading */}
 
           <div className="mb-6">
@@ -209,7 +235,6 @@ export default function Login() {
             </p>
 
           </div>
-
 
           {/* Login Form */}
 
@@ -255,10 +280,6 @@ export default function Login() {
                   onChange={(e) => {
                     setEmail(e.target.value);
 
-                    /*
-                     * Clear any previous login
-                     * error while the user edits.
-                     */
                     setError("");
                     setShowAlert(false);
                   }}
@@ -287,7 +308,6 @@ export default function Login() {
 
             </div>
 
-
             {/* Password */}
 
             <div>
@@ -304,19 +324,6 @@ export default function Login() {
                 >
                   Password
                 </label>
-
-                <button
-                  type="button"
-                  className="
-                    text-sm
-                    text-cyan-400
-                    transition
-                    hover:text-cyan-300
-                  "
-                >
-                  Forgot password?
-                </button>
-
               </div>
 
               <div className="relative">
@@ -339,11 +346,6 @@ export default function Login() {
                   onChange={(e) => {
                     setPassword(e.target.value);
 
-                    /*
-                     * Remove the error immediately
-                     * when the user starts correcting
-                     * the password.
-                     */
                     setError("");
                     setShowAlert(false);
                   }}
@@ -370,17 +372,15 @@ export default function Login() {
 
               </div>
 
-
               {/* Password Error */}
 
-              {error && (
+              {error && alertType === "error" && (
                 <p className="mt-2 text-sm text-red-400">
                   {error}
                 </p>
               )}
 
             </div>
-
 
             {/* Login Button */}
 
@@ -407,7 +407,6 @@ export default function Login() {
             </motion.button>
 
           </form>
-
 
           {/* Register */}
 

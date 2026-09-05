@@ -12,6 +12,10 @@ import { useAuth } from "../../context/AuthContext";
 import Background from "../../layout/Background/Background";
 import AppAlert from "../../components/common/AppAlert";
 
+// Production-grade email format validation
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -30,6 +34,7 @@ export default function Register() {
 
   const [alertMessage, setAlertMessage] = useState("");
   const [showAlert, setShowAlert] = useState(false);
+  const [alertType, setAlertType] = useState("error");
 
   const clearError = (field) => {
     setErrors((prev) => ({
@@ -64,30 +69,58 @@ export default function Register() {
       confirmPassword: "",
     };
 
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
     // Name validation
-    if (!name.trim()) {
+    if (!trimmedName) {
       newErrors.name = "Please enter your name.";
       hasError = true;
     }
 
     // Email validation
-    if (!email.trim()) {
+    if (!trimmedEmail) {
       newErrors.email = "Please enter your email.";
+      hasError = true;
+    } else if (!EMAIL_REGEX.test(trimmedEmail)) {
+      newErrors.email =
+        "Please enter a valid email address.";
       hasError = true;
     }
 
     // Password validation
-    if (!password.trim()) {
-      newErrors.password = "Please enter a password.";
-      hasError = true;
-    } else if (password.length < 6) {
+    if (!password) {
       newErrors.password =
-        "Password must be at least 6 characters.";
+        "Please enter a password.";
+      hasError = true;
+    } else if (password.trim() !== password) {
+      newErrors.password =
+        "Password must not start or end with spaces.";
+      hasError = true;
+    } else if (password.length < 8) {
+      newErrors.password =
+        "Password must be at least 8 characters.";
+      hasError = true;
+    } else if (!/[A-Z]/.test(password)) {
+      newErrors.password =
+        "Password must contain at least one uppercase letter.";
+      hasError = true;
+    } else if (!/[a-z]/.test(password)) {
+      newErrors.password =
+        "Password must contain at least one lowercase letter.";
+      hasError = true;
+    } else if (!/[0-9]/.test(password)) {
+      newErrors.password =
+        "Password must contain at least one number.";
+      hasError = true;
+    } else if (!/[^A-Za-z0-9]/.test(password)) {
+      newErrors.password =
+        "Password must contain at least one special character.";
       hasError = true;
     }
 
     // Confirm password validation
-    if (!confirmPassword.trim()) {
+    if (!confirmPassword) {
       newErrors.confirmPassword =
         "Please confirm your password.";
       hasError = true;
@@ -104,8 +137,8 @@ export default function Register() {
 
     try {
       const result = await register(
-        name.trim(),
-        email.trim(),
+        trimmedName,
+        trimmedEmail,
         password
       );
 
@@ -115,6 +148,7 @@ export default function Register() {
           "Unable to create your account.";
 
         setAlertMessage(message);
+        setAlertType("error");
         setShowAlert(true);
 
         /*
@@ -131,14 +165,16 @@ export default function Register() {
       /*
        * Registration successful.
        *
-       * We intentionally navigate to "/"
-       * instead of automatically logging the
-       * user into the dashboard.
-       *
-       * The user can now log in using the
-       * newly registered credentials.
+       * Show success alert before navigating
+       * back to the login page.
        */
-      navigate("/");
+      setAlertMessage("Registration successful.");
+      setAlertType("success");
+      setShowAlert(true);
+
+      setTimeout(() => {
+        navigate("/");
+      }, 1200);
 
     } catch (error) {
       console.error(
@@ -150,6 +186,7 @@ export default function Register() {
         "Unable to create your account. Please try again."
       );
 
+      setAlertType("error");
       setShowAlert(true);
 
       setPassword("");
@@ -168,7 +205,7 @@ export default function Register() {
       <AppAlert
         show={showAlert}
         message={alertMessage}
-        type="error"
+        type={alertType}
         onClose={() => setShowAlert(false)}
       />
 
@@ -275,7 +312,6 @@ export default function Register() {
 
           </div>
 
-
           {/* Heading */}
 
           <div className="mb-6">
@@ -289,7 +325,6 @@ export default function Register() {
             </p>
 
           </div>
-
 
           {/* Registration Form */}
 
@@ -367,7 +402,6 @@ export default function Register() {
 
             </div>
 
-
             {/* Email */}
 
             <div>
@@ -437,7 +471,6 @@ export default function Register() {
 
             </div>
 
-
             {/* Password */}
 
             <div>
@@ -506,7 +539,6 @@ export default function Register() {
               )}
 
             </div>
-
 
             {/* Confirm Password */}
 
@@ -582,7 +614,6 @@ export default function Register() {
 
             </div>
 
-
             {/* Register Button */}
 
             <motion.button
@@ -608,7 +639,6 @@ export default function Register() {
             </motion.button>
 
           </form>
-
 
           {/* Login Link */}
 

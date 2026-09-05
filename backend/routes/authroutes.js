@@ -14,6 +14,19 @@ const JWT_SECRET =
 
 /*
  * ============================================
+ * VALIDATION RULES
+ * ============================================
+ */
+
+const EMAIL_REGEX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+
+const PASSWORD_REGEX =
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d])\S{8,}$/;
+
+
+/*
+ * ============================================
  * REGISTER
  * POST /api/auth/register
  * ============================================
@@ -30,16 +43,56 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    const trimmedName = name.trim();
+
     const normalizedEmail =
       email.trim().toLowerCase();
 
-    if (password.length < 6) {
+    /*
+     * Validate name
+     */
+
+    if (!trimmedName) {
+      return res.status(400).json({
+        success: false,
+        message: "Name cannot be empty.",
+      });
+    }
+
+    /*
+     * Validate email
+     */
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
+
+    /*
+     * Validate password
+     *
+     * Requirements:
+     * - Minimum 8 characters
+     * - At least one uppercase letter
+     * - At least one lowercase letter
+     * - At least one number
+     * - At least one special character
+     * - No whitespace
+     */
+
+    if (!PASSWORD_REGEX.test(password)) {
       return res.status(400).json({
         success: false,
         message:
-          "Password must be at least 6 characters long.",
+          "Password must be at least 8 characters long and contain an uppercase letter, lowercase letter, number, and special character.",
       });
     }
+
+    /*
+     * Check whether email already exists
+     */
 
     const existingUser = db
       .prepare(
@@ -55,8 +108,16 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    /*
+     * Hash password
+     */
+
     const passwordHash =
       await bcrypt.hash(password, 12);
+
+    /*
+     * Create user
+     */
 
     const result = db
       .prepare(`
@@ -68,7 +129,7 @@ router.post("/register", async (req, res) => {
         VALUES (?, ?, ?)
       `)
       .run(
-        name.trim(),
+        trimmedName,
         normalizedEmail,
         passwordHash
       );
@@ -78,7 +139,7 @@ router.post("/register", async (req, res) => {
       message: "Registration successful.",
       user: {
         id: result.lastInsertRowid,
-        name: name.trim(),
+        name: trimmedName,
         email: normalizedEmail,
       },
     });
@@ -119,6 +180,17 @@ router.post("/login", async (req, res) => {
     const normalizedEmail =
       email.trim().toLowerCase();
 
+    /*
+     * Validate email format
+     */
+
+    if (!EMAIL_REGEX.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
+
     const user = db
       .prepare(`
         SELECT
@@ -130,6 +202,11 @@ router.post("/login", async (req, res) => {
         WHERE email = ?
       `)
       .get(normalizedEmail);
+
+    /*
+     * Do not reveal whether the email
+     * exists in the database.
+     */
 
     if (!user) {
       return res.status(401).json({
@@ -217,6 +294,7 @@ router.put(
       }
 
       const trimmedName = name.trim();
+
       const normalizedEmail =
         email.trim().toLowerCase();
 
@@ -225,6 +303,18 @@ router.put(
           success: false,
           message:
             "Name and email cannot be empty.",
+        });
+      }
+
+      /*
+       * Validate email format
+       */
+
+      if (!EMAIL_REGEX.test(normalizedEmail)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please enter a valid email address.",
         });
       }
 
@@ -389,14 +479,16 @@ router.put(
       }
 
       /*
-       * Password requirements
+       * Validate new password
+       *
+       * Same password policy as registration.
        */
 
-      if (newPassword.length < 6) {
+      if (!PASSWORD_REGEX.test(newPassword)) {
         return res.status(400).json({
           success: false,
           message:
-            "New password must be at least 6 characters long.",
+            "New password must be at least 8 characters long and contain an uppercase letter, lowercase letter, number, and special character.",
         });
       }
 
