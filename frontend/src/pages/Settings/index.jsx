@@ -1,6 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  useNavigate,
+  useOutletContext,
+} from "react-router-dom";
 
 import {
   FiUser,
@@ -26,6 +29,14 @@ export default function Settings() {
     changePassword,
     logout,
   } = useAuth();
+
+  /*
+   * ============================================
+   * Global Theme
+   * ============================================
+   */
+
+  const { theme, setTheme } = useOutletContext();
 
   /*
    * ============================================
@@ -60,14 +71,6 @@ export default function Settings() {
 
   const [confirmPasswordError, setConfirmPasswordError] =
     useState("");
-
-  /*
-   * ============================================
-   * Appearance
-   * ============================================
-   */
-
-  const [theme, setTheme] = useState("Dark");
 
   /*
    * ============================================
@@ -107,9 +110,6 @@ export default function Settings() {
       message,
     });
 
-    /*
-     * Automatically hide after 4 seconds.
-     */
     setTimeout(() => {
       setAlert((prev) => ({
         ...prev,
@@ -161,10 +161,6 @@ export default function Settings() {
    */
 
   const handleChangePassword = async () => {
-    /*
-     * Clear previous field errors.
-     */
-
     setCurrentPasswordError("");
     setNewPasswordError("");
     setConfirmPasswordError("");
@@ -191,9 +187,54 @@ export default function Settings() {
       return;
     }
 
-    if (newPassword.length < 6) {
+    /*
+     * Match the backend password policy:
+     * - At least 8 characters
+     * - Uppercase
+     * - Lowercase
+     * - Number
+     * - Special character
+     * - No whitespace
+     */
+
+    if (newPassword.length < 8) {
       setNewPasswordError(
-        "New password must be at least 6 characters long."
+        "Password must be at least 8 characters long."
+      );
+      return;
+    }
+
+    if (/\s/.test(newPassword)) {
+      setNewPasswordError(
+        "Password cannot contain spaces."
+      );
+      return;
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      setNewPasswordError(
+        "Password must contain at least one uppercase letter."
+      );
+      return;
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+      setNewPasswordError(
+        "Password must contain at least one lowercase letter."
+      );
+      return;
+    }
+
+    if (!/\d/.test(newPassword)) {
+      setNewPasswordError(
+        "Password must contain at least one number."
+      );
+      return;
+    }
+
+    if (!/[^A-Za-z\d]/.test(newPassword)) {
+      setNewPasswordError(
+        "Password must contain at least one special character."
       );
       return;
     }
@@ -317,9 +358,6 @@ export default function Settings() {
                 }
               `}
             >
-
-              {/* Icon */}
-
               <div
                 className={`
                   mt-0.5
@@ -338,10 +376,7 @@ export default function Settings() {
                 )}
               </div>
 
-              {/* Message */}
-
               <div className="flex-1">
-
                 <p
                   className={`
                     text-sm
@@ -355,10 +390,7 @@ export default function Settings() {
                 >
                   {alert.message}
                 </p>
-
               </div>
-
-              {/* Close */}
 
               <button
                 type="button"
@@ -370,19 +402,17 @@ export default function Settings() {
                 }
                 className="
                   shrink-0
-                  text-gray-500
+                  text-[var(--text-tertiary)]
                   transition
-                  hover:text-white
+                  hover:text-[var(--text-primary)]
                 "
               >
                 <FiX size={18} />
               </button>
-
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
 
       {/* ========================================= */}
       {/* Page Header */}
@@ -398,15 +428,14 @@ export default function Settings() {
           y: 0,
         }}
       >
-        <h1 className="text-3xl font-bold text-white">
+        <h1 className="text-3xl font-bold text-[var(--text-primary)]">
           Settings
         </h1>
 
-        <p className="mt-2 text-gray-400">
+        <p className="mt-2 text-[var(--text-secondary)]">
           Manage your account and application preferences.
         </p>
       </motion.div>
-
 
       {/* ========================================= */}
       {/* Profile */}
@@ -417,13 +446,11 @@ export default function Settings() {
         title="Profile"
         description="Manage your personal account information."
       >
-
         <div className="grid gap-6 md:grid-cols-2">
 
           {/* Name */}
 
           <div>
-
             <label
               htmlFor="profile-name"
               className="
@@ -431,21 +458,20 @@ export default function Settings() {
                 block
                 text-sm
                 font-medium
-                text-gray-300
+                text-[var(--text-secondary)]
               "
             >
               Name
             </label>
 
             <div className="relative">
-
               <FiUser
                 className="
                   absolute
                   left-4
                   top-1/2
                   -translate-y-1/2
-                  text-gray-500
+                  text-[var(--text-tertiary)]
                 "
               />
 
@@ -460,28 +486,25 @@ export default function Settings() {
                   w-full
                   rounded-xl
                   border
-                  border-white/10
-                  bg-white/5
+                  border-[var(--border)]
+                  bg-[var(--input-bg)]
                   py-3
                   pl-11
                   pr-4
-                  text-white
+                  text-[var(--text-primary)]
                   outline-none
                   transition
+                  placeholder:text-[var(--text-tertiary)]
                   focus:border-cyan-400
-                  focus:bg-white/[0.07]
+                  focus:bg-[var(--surface-hover)]
                 "
               />
-
             </div>
-
           </div>
-
 
           {/* Email */}
 
           <div>
-
             <label
               htmlFor="profile-email"
               className="
@@ -489,21 +512,20 @@ export default function Settings() {
                 block
                 text-sm
                 font-medium
-                text-gray-300
+                text-[var(--text-secondary)]
               "
             >
               Email
             </label>
 
             <div className="relative">
-
               <FiMail
                 className="
                   absolute
                   left-4
                   top-1/2
                   -translate-y-1/2
-                  text-gray-500
+                  text-[var(--text-tertiary)]
                 "
               />
 
@@ -518,25 +540,22 @@ export default function Settings() {
                   w-full
                   rounded-xl
                   border
-                  border-white/10
-                  bg-white/5
+                  border-[var(--border)]
+                  bg-[var(--input-bg)]
                   py-3
                   pl-11
                   pr-4
-                  text-white
+                  text-[var(--text-primary)]
                   outline-none
                   transition
+                  placeholder:text-[var(--text-tertiary)]
                   focus:border-cyan-400
-                  focus:bg-white/[0.07]
+                  focus:bg-[var(--surface-hover)]
                 "
               />
-
             </div>
-
           </div>
-
         </div>
-
 
         {/* Save */}
 
@@ -556,9 +575,7 @@ export default function Settings() {
         >
           Save Changes
         </button>
-
       </SettingsCard>
-
 
       {/* ========================================= */}
       {/* Appearance */}
@@ -569,27 +586,25 @@ export default function Settings() {
         title="Appearance"
         description="Customize how AccessGuardAI looks."
       >
-
-        <div className="
-          flex
-          flex-col
-          items-start
-          justify-between
-          gap-6
-          sm:flex-row
-          sm:items-center
-        ">
-
+        <div
+          className="
+            flex
+            flex-col
+            items-start
+            justify-between
+            gap-6
+            sm:flex-row
+            sm:items-center
+          "
+        >
           <div>
-
-            <h3 className="font-medium text-white">
+            <h3 className="font-medium text-[var(--text-primary)]">
               Theme
             </h3>
 
-            <p className="mt-1 text-sm text-gray-400">
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
               Choose your preferred application theme.
             </p>
-
           </div>
 
           <select
@@ -600,43 +615,39 @@ export default function Settings() {
             className="
               rounded-xl
               border
-              border-white/10
-              bg-white/5
+              border-[var(--border)]
+              bg-[var(--input-bg)]
               px-4
               py-3
-              text-white
+              text-[var(--text-primary)]
               outline-none
+              transition
               focus:border-cyan-400
             "
           >
-
             <option
               value="Dark"
-              className="bg-slate-900"
+              className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
             >
               Dark
             </option>
 
             <option
               value="Light"
-              className="bg-slate-900"
+              className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
             >
               Light
             </option>
 
             <option
               value="System"
-              className="bg-slate-900"
+              className="bg-[var(--dropdown-bg)] text-[var(--text-primary)]"
             >
               System
             </option>
-
           </select>
-
         </div>
-
       </SettingsCard>
-
 
       {/* ========================================= */}
       {/* Security */}
@@ -647,19 +658,14 @@ export default function Settings() {
         title="Security"
         description="Manage your account security."
       >
-
-        {/* Password */}
-
         <div>
-
-          <h3 className="font-medium text-white">
+          <h3 className="font-medium text-[var(--text-primary)]">
             Change Password
           </h3>
 
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Update your account password.
           </p>
-
 
           <div className="
             mt-5
@@ -668,12 +674,9 @@ export default function Settings() {
             md:grid-cols-3
           ">
 
-            {/* ================================= */}
             {/* Current Password */}
-            {/* ================================= */}
 
             <div>
-
               <label
                 htmlFor="current-password"
                 className="
@@ -681,21 +684,20 @@ export default function Settings() {
                   block
                   text-sm
                   font-medium
-                  text-gray-300
+                  text-[var(--text-secondary)]
                 "
               >
                 Current Password
               </label>
 
               <div className="relative">
-
                 <FiLock
                   className="
                     absolute
                     left-4
                     top-1/2
                     -translate-y-1/2
-                    text-gray-500
+                    text-[var(--text-tertiary)]
                   "
                 />
 
@@ -714,44 +716,34 @@ export default function Settings() {
                     w-full
                     rounded-xl
                     border
-                    bg-white/5
+                    bg-[var(--input-bg)]
                     py-3
                     pl-11
                     pr-4
-                    text-white
-                    placeholder:text-gray-600
+                    text-[var(--text-primary)]
+                    placeholder:text-[var(--text-tertiary)]
                     outline-none
                     transition
                     focus:border-cyan-400
                     ${
                       currentPasswordError
                         ? "border-red-400/50"
-                        : "border-white/10"
+                        : "border-[var(--border)]"
                     }
                   `}
                 />
-
               </div>
 
               {currentPasswordError && (
-                <p className="
-                  mt-2
-                  text-sm
-                  text-red-400
-                ">
+                <p className="mt-2 text-sm text-red-400">
                   {currentPasswordError}
                 </p>
               )}
-
             </div>
 
-
-            {/* ================================= */}
             {/* New Password */}
-            {/* ================================= */}
 
             <div>
-
               <label
                 htmlFor="new-password"
                 className="
@@ -759,21 +751,20 @@ export default function Settings() {
                   block
                   text-sm
                   font-medium
-                  text-gray-300
+                  text-[var(--text-secondary)]
                 "
               >
                 New Password
               </label>
 
               <div className="relative">
-
                 <FiLock
                   className="
                     absolute
                     left-4
                     top-1/2
                     -translate-y-1/2
-                    text-gray-500
+                    text-[var(--text-tertiary)]
                   "
                 />
 
@@ -792,44 +783,34 @@ export default function Settings() {
                     w-full
                     rounded-xl
                     border
-                    bg-white/5
+                    bg-[var(--input-bg)]
                     py-3
                     pl-11
                     pr-4
-                    text-white
-                    placeholder:text-gray-600
+                    text-[var(--text-primary)]
+                    placeholder:text-[var(--text-tertiary)]
                     outline-none
                     transition
                     focus:border-cyan-400
                     ${
                       newPasswordError
                         ? "border-red-400/50"
-                        : "border-white/10"
+                        : "border-[var(--border)]"
                     }
                   `}
                 />
-
               </div>
 
               {newPasswordError && (
-                <p className="
-                  mt-2
-                  text-sm
-                  text-red-400
-                ">
+                <p className="mt-2 text-sm text-red-400">
                   {newPasswordError}
                 </p>
               )}
-
             </div>
 
-
-            {/* ================================= */}
             {/* Confirm Password */}
-            {/* ================================= */}
 
             <div>
-
               <label
                 htmlFor="confirm-password"
                 className="
@@ -837,21 +818,20 @@ export default function Settings() {
                   block
                   text-sm
                   font-medium
-                  text-gray-300
+                  text-[var(--text-secondary)]
                 "
               >
                 Confirm Password
               </label>
 
               <div className="relative">
-
                 <FiLock
                   className="
                     absolute
                     left-4
                     top-1/2
                     -translate-y-1/2
-                    text-gray-500
+                    text-[var(--text-tertiary)]
                   "
                 />
 
@@ -870,39 +850,31 @@ export default function Settings() {
                     w-full
                     rounded-xl
                     border
-                    bg-white/5
+                    bg-[var(--input-bg)]
                     py-3
                     pl-11
                     pr-4
-                    text-white
-                    placeholder:text-gray-600
+                    text-[var(--text-primary)]
+                    placeholder:text-[var(--text-tertiary)]
                     outline-none
                     transition
                     focus:border-cyan-400
                     ${
                       confirmPasswordError
                         ? "border-red-400/50"
-                        : "border-white/10"
+                        : "border-[var(--border)]"
                     }
                   `}
                 />
-
               </div>
 
               {confirmPasswordError && (
-                <p className="
-                  mt-2
-                  text-sm
-                  text-red-400
-                ">
+                <p className="mt-2 text-sm text-red-400">
                   {confirmPasswordError}
                 </p>
               )}
-
             </div>
-
           </div>
-
 
           {/* Change Password Button */}
 
@@ -916,37 +888,31 @@ export default function Settings() {
               gap-2
               rounded-xl
               border
-              border-white/10
-              bg-white/5
+              border-[var(--border)]
+              bg-[var(--surface)]
               px-5
               py-2.5
               text-sm
               font-medium
-              text-gray-200
+              text-[var(--text-secondary)]
               transition
               hover:border-cyan-400/30
               hover:bg-cyan-400/10
-              hover:text-cyan-300
+              hover:text-[var(--theme-cyan)]
             "
           >
             <FiLock size={16} />
-
             Change Password
           </button>
-
         </div>
-
 
         <div className="
           my-5
           border-t
-          border-white/10
+          border-[var(--border)]
         " />
 
-
-        {/* ========================================= */}
         {/* Sign Out */}
-        {/* ========================================= */}
 
         <div className="
           flex
@@ -956,17 +922,14 @@ export default function Settings() {
           sm:items-center
           sm:justify-between
         ">
-
           <div>
-
-            <h3 className="font-medium text-white">
+            <h3 className="font-medium text-[var(--text-primary)]">
               Sign Out
             </h3>
 
-            <p className="mt-1 text-sm text-gray-400">
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
               Sign out of your AccessGuardAI account.
             </p>
-
           </div>
 
           <button
@@ -990,14 +953,10 @@ export default function Settings() {
             "
           >
             <FiLogOut size={16} />
-
             Sign Out
           </button>
-
         </div>
-
       </SettingsCard>
-
 
       {/* ========================================= */}
       {/* About */}
@@ -1008,13 +967,11 @@ export default function Settings() {
         title="About"
         description="Information about AccessGuardAI."
       >
-
         <div className="
           grid
           gap-4
           sm:grid-cols-2
         ">
-
           <InfoItem
             label="Application"
             value="AccessGuardAI"
@@ -1024,11 +981,8 @@ export default function Settings() {
             label="Version"
             value="1.0.0"
           />
-
         </div>
-
       </SettingsCard>
-
     </div>
   );
 }
@@ -1057,21 +1011,19 @@ function SettingsCard({
       className="
         rounded-3xl
         border
-        border-white/10
-        bg-white/5
+        border-[var(--border)]
+        bg-[var(--surface)]
         p-6
         backdrop-blur-xl
         shadow-[0_0_30px_rgba(6,182,212,0.05)]
       "
     >
-
       <div className="
         mb-6
         flex
         items-start
         gap-4
       ">
-
         <div
           className="
             flex
@@ -1082,18 +1034,17 @@ function SettingsCard({
             justify-center
             rounded-xl
             bg-cyan-500/10
-            text-cyan-400
+            text-[var(--theme-cyan)]
           "
         >
           {icon}
         </div>
 
         <div>
-
           <h2 className="
             text-xl
             font-semibold
-            text-white
+            text-[var(--text-primary)]
           ">
             {title}
           </h2>
@@ -1101,17 +1052,14 @@ function SettingsCard({
           <p className="
             mt-1
             text-sm
-            text-gray-400
+            text-[var(--text-secondary)]
           ">
             {description}
           </p>
-
         </div>
-
       </div>
 
       {children}
-
     </motion.section>
   );
 }
@@ -1130,15 +1078,14 @@ function InfoItem({
       className="
         rounded-2xl
         border
-        border-white/10
-        bg-white/[0.03]
+        border-[var(--border)]
+        bg-[var(--surface-soft)]
         p-5
       "
     >
-
       <p className="
         text-sm
-        text-gray-400
+        text-[var(--text-secondary)]
       ">
         {label}
       </p>
@@ -1146,11 +1093,10 @@ function InfoItem({
       <p className="
         mt-1
         font-semibold
-        text-white
+        text-[var(--text-primary)]
       ">
         {value}
       </p>
-
     </div>
   );
 }

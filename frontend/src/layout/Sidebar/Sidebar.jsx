@@ -91,8 +91,8 @@ export default function Sidebar({
         z-50
         rounded-3xl
         border
-        border-white/10
-        bg-white/5
+        border-[var(--border)]
+        bg-[var(--surface)]
         backdrop-blur-2xl
         shadow-2xl
       "
@@ -114,7 +114,7 @@ export default function Sidebar({
                 <div className="rounded-xl bg-cyan-500/20 p-2">
 
                   <FiShield
-                    className="text-cyan-300"
+                    className="text-[var(--theme-cyan)]"
                     size={22}
                   />
 
@@ -122,11 +122,11 @@ export default function Sidebar({
 
                 <div>
 
-                  <h2 className="font-bold text-white">
+                  <h2 className="font-bold text-[var(--text-primary)]">
                     AccessGuardAI
                   </h2>
 
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-[var(--text-secondary)]">
                     Accessibility Governance Platform
                   </p>
 
@@ -142,10 +142,10 @@ export default function Sidebar({
             className="
               rounded-xl
               p-2
-              text-gray-400
+              text-[var(--text-secondary)]
               transition
-              hover:bg-white/10
-              hover:text-white
+              hover:bg-[var(--surface-hover)]
+              hover:text-[var(--text-primary)]
             "
           >
             <FiMenu size={22} />
@@ -181,13 +181,13 @@ export default function Sidebar({
 
         {!collapsed && (
 
-          <div className="border-t border-white/10 p-6">
+          <div className="border-t border-[var(--border)] p-6">
 
-            <p className="text-sm text-gray-300">
+            <p className="text-sm text-[var(--text-secondary)]">
               AccessGuardAI
             </p>
 
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-[var(--text-tertiary)]">
               Version 1.0.0
             </p>
 

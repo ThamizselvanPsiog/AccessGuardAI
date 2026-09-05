@@ -1,11 +1,15 @@
 import { useLocation, useNavigate } from "react-router-dom";
+
 import {
   FiBell,
   FiUser,
   FiLogOut,
 } from "react-icons/fi";
+
 import { navigation } from "../../utils/navigation";
+
 import { useEffect, useState } from "react";
+
 import { useAuth } from "../../context/AuthContext";
 
 export default function Navbar() {
@@ -14,17 +18,23 @@ export default function Navbar() {
 
   const { user, logout } = useAuth();
 
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [currentTime, setCurrentTime] = useState(
+    new Date()
+  );
+
+  const [showUserMenu, setShowUserMenu] =
+    useState(false);
 
   const currentPage =
-    navigation.find((item) => item.path === location.pathname) || {
+    navigation.find(
+      (item) => item.path === location.pathname
+    ) || {
       title: "AccessGuardAI",
     };
 
-  /* ============================= */
-  /* Greeting */
-  /* ============================= */
+  /* =============================
+     Greeting
+     ============================= */
 
   const hour = currentTime.getHours();
 
@@ -39,9 +49,9 @@ export default function Navbar() {
     emoji = "🌤";
   }
 
-  /* ============================= */
-  /* Live Clock */
-  /* ============================= */
+  /* =============================
+     Live Clock
+     ============================= */
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -51,21 +61,23 @@ export default function Navbar() {
     return () => clearInterval(timer);
   }, []);
 
-  const formattedDate = currentTime.toLocaleDateString("en-IN", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  const formattedDate =
+    currentTime.toLocaleDateString("en-IN", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
 
-  const formattedTime = currentTime.toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedTime =
+    currentTime.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-  /* ============================= */
-  /* Logout */
-  /* ============================= */
+  /* =============================
+     Logout
+     ============================= */
 
   const handleLogout = () => {
     logout();
@@ -74,7 +86,6 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-6 z-20 mb-8">
-
       <div
         className="
           flex
@@ -82,85 +93,71 @@ export default function Navbar() {
           justify-between
           rounded-3xl
           border
-          border-white/10
-          bg-white/5
+          border-[var(--border)]
+          bg-[var(--surface)]
           px-8
           py-5
           backdrop-blur-xl
         "
       >
 
-        {/* ============================= */}
-        {/* Left Side */}
-        {/* ============================= */}
+        {/* LEFT SIDE */}
 
         <div>
-
-          <h1 className="text-4xl font-bold text-white">
+          <h1 className="text-4xl font-bold text-[var(--text-primary)]">
             {currentPage.title}
           </h1>
 
           <div className="mt-2">
-
-            <p className="text-lg font-medium text-cyan-300">
+            <p className="text-lg font-medium text-[var(--theme-cyan)]">
               {emoji} {greeting}
               {user?.name ? `, ${user.name}` : ""}
             </p>
 
-            <p className="text-gray-400">
+            <p className="text-[var(--text-secondary)]">
               Welcome back to AccessGuardAI
             </p>
-
           </div>
-
         </div>
 
-
-        {/* ============================= */}
-        {/* Right Side */}
-        {/* ============================= */}
+        {/* RIGHT SIDE */}
 
         <div className="flex items-center gap-4">
 
-          {/* Date & Time */}
+          {/* DATE & TIME */}
 
           <div className="mr-6 text-right">
-
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-[var(--text-secondary)]">
               {formattedDate}
             </p>
 
-            <p className="text-xl font-semibold text-white">
+            <p className="text-xl font-semibold text-[var(--text-primary)]">
               {formattedTime}
             </p>
-
           </div>
 
-
-          {/* Notification */}
+          {/* NOTIFICATION */}
 
           <button
             type="button"
             className="
               rounded-2xl
               border
-              border-white/10
-              bg-white/5
+              border-[var(--border)]
+              bg-[var(--surface)]
               p-3
-              text-gray-300
+              text-[var(--text-secondary)]
               transition
               hover:bg-cyan-500/10
-              hover:text-cyan-300
+              hover:text-[var(--theme-cyan)]
             "
           >
             <FiBell size={20} />
           </button>
 
-
-          {/* User */}
+          {/* USER */}
 
           <div className="relative">
-
             <button
               type="button"
               onClick={() =>
@@ -172,8 +169,8 @@ export default function Navbar() {
                 gap-3
                 rounded-2xl
                 border
-                border-white/10
-                bg-white/5
+                border-[var(--border)]
+                bg-[var(--surface)]
                 px-3
                 py-2
                 text-left
@@ -181,8 +178,6 @@ export default function Navbar() {
                 hover:bg-cyan-500/10
               "
             >
-              {/* User Icon */}
-            
               <div
                 className="
                   flex
@@ -193,27 +188,24 @@ export default function Navbar() {
                   justify-center
                   rounded-xl
                   bg-cyan-500/10
-                  text-cyan-400
+                  text-[var(--theme-cyan)]
                 "
               >
                 <FiUser size={20} />
               </div>
-            
-              {/* User Information */}
-            
+
               <div className="min-w-0">
-                <p className="max-w-[140px] truncate text-sm font-semibold text-white">
+                <p className="max-w-[140px] truncate text-sm font-semibold text-[var(--text-primary)]">
                   {user?.name || "User"}
                 </p>
-            
-                <p className="max-w-[160px] truncate text-xs text-gray-400">
+
+                <p className="max-w-[160px] truncate text-xs text-[var(--text-secondary)]">
                   {user?.email || ""}
                 </p>
               </div>
             </button>
 
-
-            {/* User Menu */}
+            {/* USER MENU */}
 
             {showUserMenu && (
               <div
@@ -227,15 +219,14 @@ export default function Navbar() {
                   overflow-hidden
                   rounded-2xl
                   border
-                  border-white/10
-                  bg-slate-900/95
+                  border-[var(--border)]
+                  bg-[var(--dropdown-bg)]
                   p-2
                   shadow-xl
                   backdrop-blur-xl
                 "
               >
-
-                {/* Profile */}
+                {/* PROFILE */}
 
                 <button
                   type="button"
@@ -252,19 +243,17 @@ export default function Navbar() {
                     px-3
                     py-2.5
                     text-sm
-                    text-gray-300
+                    text-[var(--text-secondary)]
                     transition
-                    hover:bg-white/5
-                    hover:text-white
+                    hover:bg-[var(--surface-hover)]
+                    hover:text-[var(--text-primary)]
                   "
                 >
                   <FiUser size={17} />
-
                   Profile
                 </button>
 
-
-                {/* Logout */}
+                {/* LOGOUT */}
 
                 <button
                   type="button"
@@ -284,19 +273,13 @@ export default function Navbar() {
                   "
                 >
                   <FiLogOut size={17} />
-
                   Sign Out
                 </button>
-
               </div>
             )}
-
           </div>
-
         </div>
-
       </div>
-
     </header>
   );
 }
